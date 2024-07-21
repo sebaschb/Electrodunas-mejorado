@@ -1,0 +1,163 @@
+version: '3.8'
+services:
+  db:
+    container_name: pg_container
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: test_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  pgadmin:
+    container_name: pgadmin4_container
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: root
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - "5050:80"
+    links:
+      - db
+
+  datos:
+    container_name: datos
+    build: ./Datos_DB
+    restart: always
+    depends_on:
+      - db
+    links:
+      - db
+
+  api-users:
+    container_name: api-users
+    build:
+      context: ./APIs/users
+      dockerfile: Dockerfile
+      args:
+        DATABASE_URL: ${DATABASE_URL}
+        PORT: ${PORT_USERS}
+    restart: always
+    depends_on:
+      - db
+      - redis
+    links:
+      - db
+      - redis
+    ports:
+      - "${PORT_USERS}:${PORT_USERS}"
+    env_file:
+      - .env
+
+  api-readings:
+    container_name: api-readings
+    build:
+      context: ./APIs/readings
+      dockerfile: Dockerfile
+      args:
+        DATABASE_URL: ${DATABASE_URL}
+        PORT: ${PORT_READINGS}
+    restart: always
+    depends_on:
+      - db
+      - redis
+    links:
+      - db
+      - redis
+    ports:
+      - "${PORT_READINGS}:${PORT_READINGS}"
+    env_file:
+      - .env
+
+  api-instrumentations:
+    container_name: api-instrumentations
+    build:
+      context: ./APIs/instrumentations
+      dockerfile: Dockerfile
+      args:
+        DATABASE_URL: ${DATABASE_URL}
+        PORT: ${PORT_INSTRUMENTATIONS}
+    restart: always
+    depends_on:
+      - db
+      - redis
+    links:
+      - db
+      - redis
+    ports:
+      - "${PORT_INSTRUMENTATIONS}:${PORT_INSTRUMENTATIONS}"
+    env_file:
+      - .env
+
+  api-energy:
+    container_name: api-energy
+    build:
+      context: ./APIs/energy
+      dockerfile: Dockerfile
+      args:
+        DATABASE_URL: ${DATABASE_URL}
+        PORT: ${PORT_ENERGY}
+    restart: always
+    depends_on:
+      - db
+      - redis
+    links:
+      - db
+      - redis
+    ports:
+      - "${PORT_ENERGY}:${PORT_ENERGY}"
+    env_file:
+      - .env
+
+  api-alarms:
+    container_name: api-alarms
+    build:
+      context: ./APIs/alarms
+      dockerfile: Dockerfile
+      args:
+        DATABASE_URL: ${DATABASE_URL}
+        PORT: ${PORT_ALARMS}
+    restart: always
+    depends_on:
+      - db
+      - redis
+    links:
+      - db
+      - redis
+    ports:
+      - "${PORT_ALARMS}:${PORT_ALARMS}"
+    env_file:
+      - .env
+
+  front:
+    container_name: front
+    build: ./Front
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api-users
+      - api-readings
+      - api-instrumentations
+      - api-energy
+      - api-alarms
+    links:
+      - api-users
+      - api-readings
+      - api-instrumentations
+      - api-energy
+      - api-alarms
+
+  redis:
+    container_name: redis_container
+    image: redis
+    restart: always
+    ports:
+      - "6379:6379"
